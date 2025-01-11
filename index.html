@@ -278,6 +278,9 @@
       }
 
       async function main() {
+        let somedata = await fetchCoopData(7311070006209);
+        console.log(JSON.stringify(coopResponse, null, 2));
+
         console.info("Application starting...");
         await startVideo();
         if (window.BarcodeDetector) {
@@ -292,8 +295,7 @@
         await listDevices();
       }
 
-      let somedata = await fetchCoopData(7311070006209);
-      console.log(JSON.stringify(coopResponse, null, 2));
+      
 
       main();
       window.onerror = (message) => {
