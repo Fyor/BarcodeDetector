@@ -205,12 +205,7 @@
                                   JSON.stringify(coopResponse, null, 2);
 
         } catch (error) {
-          console.error("API Error:", error);
-          if (error.message.includes('COOP')) {
-            coopDisplay.textContent = "Error fetching COOP data: " + error.message;
-          } else {
-            foodFactsDisplay.textContent = "Error fetching Open Food Facts data: " + error.message;
-          }
+          console.error("Error fetching data: " + error.message);
         } finally {
           isProcessing = false;
           setTimeout(() => {
