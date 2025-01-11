@@ -36,7 +36,7 @@
 
       async function read() {
         var barcodeDetector = new BarcodeDetector({
-          formats: ["qr_code", "data_matrix"],
+          formats: ["qr_code", "ean_13"],
         });
         async function read_frame() {
           try {
