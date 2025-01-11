@@ -205,6 +205,14 @@
             console.info('No allergens information found');
           }
 
+          const allergens_coop = coopResponse.results?.items[0].listOfIngredients;
+          if (allergens_coop) {
+            console.info(`allergens_coop found: ${allergens_coop}`);
+            alert(`Ingredients: ${allergens_coop}`);
+          } else {
+            console.info('No allergens_coop information found');
+          }
+
           foodFactsDisplay.textContent = "Open Food Facts Response:\n" + 
                                        JSON.stringify(foodFactsResponse, null, 2);
           coopDisplay.textContent = "COOP Response:\n" + 
@@ -267,8 +275,8 @@
       }
 
       async function main() {
-        let coopResponse = await fetchCoopData(7311070006209);
-        console.log(JSON.stringify(coopResponse, null, 2));
+        // let coopResponse = await fetchCoopData(7311070006209);
+        // console.log(JSON.stringify(coopResponse, null, 2));
 
         console.info("Application starting...");
         await startVideo();
