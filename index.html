@@ -3,8 +3,14 @@
     <meta charset="utf-8" />
     <title>Native QR Code reader demo</title>
     <style>
-      #json-response {
-        width: 100%;
+      .response-container {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+      .json-response {
+        flex: 1;
+        min-width: 300px;
         max-width: 500px;
         min-height: 200px;
         padding: 10px;
@@ -25,11 +31,15 @@
         <select id="device-list"></select>
       </label>
     </p>
-    <div id="json-response"></div>
+    <div class="response-container">
+      <div id="food-facts-response" class="json-response"></div>
+      <div id="coop-response" class="json-response"></div>
+    </div>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
       const video = document.querySelector("video");
-      const jsonDisplay = document.getElementById("json-response");
+      const foodFactsDisplay = document.getElementById("food-facts-response");
+      const coopDisplay = document.getElementById("coop-response");
       let deviceId;
       let lastScannedCode = null;
       let isProcessing = false;
@@ -52,6 +62,37 @@
         }
       }
 
+      async function fetchCoopData(productCode) {
+        const url = 'https://external.api.coop.se/personalization/search/entities/by-id';
+        const params = {
+          'api-version': 'v1',
+          'store': '251300'
+        };
+
+        const queryString = new URLSearchParams(params).toString();
+        const fullUrl = `${url}?${queryString}`;
+
+        try {
+          const response = await fetch(fullUrl, {
+            method: 'POST',
+            headers: {
+              'Ocp-Apim-Subscription-Key': '3becf0ce306f41a1ae94077c16798187',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify([productCode])
+          });
+
+          if (!response.ok) {
+            throw new Error(`COOP API responded with status: ${response.status}`);
+          }
+
+          return await response.json();
+        } catch (error) {
+          console.error('COOP API Error:', error);
+          throw error;
+        }
+      }
+
       async function processBarcode(productCode) {
         if (isProcessing || productCode === lastScannedCode) {
           return;
@@ -59,22 +100,35 @@
 
         isProcessing = true;
         lastScannedCode = productCode;
-        jsonDisplay.textContent = "Loading data...";
+        foodFactsDisplay.textContent = "Loading Open Food Facts data...";
+        coopDisplay.textContent = "Loading COOP data...";
 
-        const url = `https://world.openfoodfacts.org/api/v3/product/${productCode}.json`;
-        
         try {
-          const response = await $.getJSON(url);
-          const allergens = response.product.allergens_from_ingredients;
+          // Make both API calls in parallel
+          const [foodFactsResponse, coopResponse] = await Promise.all([
+            $.getJSON(`https://world.openfoodfacts.org/api/v3/product/${productCode}.json`),
+            fetchCoopData(productCode)
+          ]);
+
+          // Process Open Food Facts response
+          const allergens = foodFactsResponse.product?.allergens_from_ingredients;
           if (allergens) {
             alert(`Allergens: ${allergens}`);
-          } else {
-            alert("No allergens information found");
           }
-          jsonDisplay.textContent = JSON.stringify(response, null, 2);
+          foodFactsDisplay.textContent = "Open Food Facts Response:\n" + 
+                                       JSON.stringify(foodFactsResponse, null, 2);
+
+          // Process COOP response
+          coopDisplay.textContent = "COOP Response:\n" + 
+                                  JSON.stringify(coopResponse, null, 2);
+
         } catch (error) {
-          console.error("Request Failed:", error);
-          jsonDisplay.textContent = "Error fetching data: " + error.message;
+          console.error("API Error:", error);
+          if (error.message.includes('COOP')) {
+            coopDisplay.textContent = "Error fetching COOP data: " + error.message;
+          } else {
+            foodFactsDisplay.textContent = "Error fetching Open Food Facts data: " + error.message;
+          }
         } finally {
           isProcessing = false;
           // Reset the last scanned code after 5 seconds
@@ -98,7 +152,7 @@
             }
           } catch (e) {
             console.error(e);
-            jsonDisplay.textContent = "Error: " + e.message;
+            foodFactsDisplay.textContent = "Error: " + e.message;
           }
           requestAnimationFrame(read_frame);
         }
