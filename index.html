@@ -2,19 +2,34 @@
   <head>
     <meta charset="utf-8" />
     <title>Native QR Code reader demo</title>
+    <style>
+      #json-response {
+        width: 100%;
+        max-width: 500px;
+        min-height: 200px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-family: monospace;
+        white-space: pre-wrap;
+        margin-top: 20px;
+        background-color: #f5f5f5;
+      }
+    </style>
   </head>
   <body>
     <video autoplay></video>
-
     <p>
       <label
         >camera:
         <select id="device-list"></select>
       </label>
     </p>
+    <div id="json-response"></div>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
       const video = document.querySelector("video");
+      const jsonDisplay = document.getElementById("json-response");
       let deviceId;
       async function startVideo() {
         const media = await navigator.mediaDevices.getUserMedia({
@@ -26,14 +41,12 @@
         });
         video.srcObject = media;
       }
-
       async function stopVideo() {
         const media = video.srcObject;
         if (media) {
           media.getTracks().forEach((track) => track.stop());
         }
       }
-
       async function read() {
         var barcodeDetector = new BarcodeDetector({
           formats: ["ean_13"],
@@ -44,26 +57,27 @@
             if (results.length) {
               console.log(results);
               for (const r of results) {
-                const productCode = r.rawValue; // Store the product code in a variable
-                const url = `https://world.openfoodfacts.org/api/v3/product/${productCode}.json`; // Use template literals to construct the URL
-
+                const productCode = r.rawValue;
+                const url = `https://world.openfoodfacts.org/api/v3/product/${productCode}.json`;
                 $.getJSON(url, function(data) {
                     const allergens = data.product.allergens_from_ingredients;
-                    alert(allergens); // Alert the allergens string
+                    alert(allergens);
+                    // Display the full JSON response in the div
+                    jsonDisplay.textContent = JSON.stringify(data, null, 2);
                 }).fail(function(jqxhr, textStatus, error) {
                     console.error("Request Failed: " + textStatus + ", " + error);
+                    jsonDisplay.textContent = "Error fetching data: " + error;
                 });
-
               }
             }
           } catch (e) {
             console.error(e);
+            jsonDisplay.textContent = "Error: " + e.message;
           }
           requestAnimationFrame(read_frame);
         }
         read_frame();
       }
-
       async function listDevices() {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const select = document.querySelector("#device-list");
@@ -80,7 +94,6 @@
           await startVideo();
         };
       }
-
       async function main() {
         await startVideo();
         if (window.BarcodeDetector) {
@@ -90,9 +103,7 @@
         }
         await listDevices();
       }
-
       main();
-
       window.onerror = (message) => alert(message);
     </script>
   </body>
