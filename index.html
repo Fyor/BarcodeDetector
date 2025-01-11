@@ -12,7 +12,7 @@
         <select id="device-list"></select>
       </label>
     </p>
-
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
       const video = document.querySelector("video");
       let deviceId;
@@ -36,14 +36,25 @@
 
       async function read() {
         var barcodeDetector = new BarcodeDetector({
-          formats: ["qr_code", "ean_13"],
+          formats: ["ean_13"],
         });
         async function read_frame() {
           try {
             const results = await barcodeDetector.detect(video);
             if (results.length) {
               console.log(results);
-              for (const r of results) alert(r.rawValue);
+              for (const r of results) {
+                const productCode = r.rawValue; // Store the product code in a variable
+                const url = `https://world.openfoodfacts.org/api/v3/product/${productCode}.json`; // Use template literals to construct the URL
+
+                $.getJSON(url, function(data) {
+                    const allergens = data.product.allergens_from_ingredients;
+                    alert(allergens); // Alert the allergens string
+                }).fail(function(jqxhr, textStatus, error) {
+                    console.error("Request Failed: " + textStatus + ", " + error);
+                });
+
+              }
             }
           } catch (e) {
             console.error(e);
