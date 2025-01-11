@@ -267,7 +267,7 @@
       }
 
       async function main() {
-        let somedata = await fetchCoopData(7311070006209);
+        let coopResponse = await fetchCoopData(7311070006209);
         console.log(JSON.stringify(coopResponse, null, 2));
 
         console.info("Application starting...");
