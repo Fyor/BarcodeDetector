@@ -150,38 +150,27 @@
       }
 
       async function fetchCoopData(productCode) {
-        console.log(`Fetching COOP data for product: ${productCode}`);
-        const url = 'https://external.api.coop.se/personalization/search/entities/by-id';
-        const params = {
-          'api-version': 'v1',
-          'store': '251300'
-        };
+      try {
+        const response = await fetch('/api/coop-proxy', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ productCode }),
+        });
 
-        const queryString = new URLSearchParams(params).toString();
-        const fullUrl = `${url}?${queryString}`;
-
-        try {
-          const response = await fetch(fullUrl, {
-            method: 'POST',
-            headers: {
-              'Ocp-Apim-Subscription-Key': '3becf0ce306f41a1ae94077c16798187',
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify([productCode])
-          });
-
-          if (!response.ok) {
-            throw new Error(`COOP API responded with status: ${response.status}`);
-          }
-
-          const data = await response.json();
-          console.log('COOP API Response received');
-          return data;
-        } catch (error) {
-          console.error('COOP API Error:', error);
-          throw error;
+        if (!response.ok) {
+          throw new Error(`Proxy server responded with status: ${response.status}`);
         }
+
+        const data = await response.json();
+        console.log('COOP Proxy Response received');
+        return data;
+      } catch (error) {
+        console.error('Proxy Error:', error);
+        throw error;
       }
+    }
 
       async function processBarcode(productCode) {
         if (!isValidBarcode(productCode)) {
