@@ -3,7 +3,6 @@
     <meta charset="utf-8" />
     <title>Native QR Code reader demo</title>
     <style>
-      /* Previous styles remain the same */
       .response-container {
         display: flex;
         gap: 20px;
@@ -35,15 +34,21 @@
         background-color: #2b2b2b;
         color: #fff;
       }
-      .log-error { color: #ff6b6b; }
-      .log-info { color: #69db7c; }
-      .log-debug { color: #74c0fc; }
+      .log-error {
+        color: #ff6b6b;
+      }
+      .log-info {
+        color: #69db7c;
+      }
     </style>
   </head>
   <body>
     <video autoplay></video>
     <p>
-      <label>camera: <select id="device-list"></select></label>
+      <label
+        >camera:
+        <select id="device-list"></select>
+      </label>
     </p>
     <div class="response-container">
       <div id="food-facts-response" class="json-response">Waiting for barcode scan...</div>
@@ -52,7 +57,6 @@
     <div id="console-log"></div>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-      // Console setup code remains the same
       const video = document.querySelector("video");
       const foodFactsDisplay = document.getElementById("food-facts-response");
       const coopDisplay = document.getElementById("coop-response");
@@ -61,10 +65,13 @@
       let lastScannedCode = null;
       let isProcessing = false;
 
-      let somedata = await fetchCoopData(7311070006209);
-      console.log(JSON.stringify(coopResponse, null, 2));
+      // Override console methods to display in our custom console
+      const originalConsole = {
+        log: console.log,
+        error: console.error,
+        info: console.info
+      };
 
-      // Console override functions remain the same
       function formatDate() {
         return new Date().toLocaleTimeString();
       }
@@ -80,20 +87,11 @@
           div.className = 'log-error';
         } else if (type === 'info') {
           div.className = 'log-info';
-        } else if (type === 'debug') {
-          div.className = 'log-debug';
         }
         
         consoleDisplay.appendChild(div);
         consoleDisplay.scrollTop = consoleDisplay.scrollHeight;
       }
-
-      const originalConsole = {
-        log: console.log,
-        error: console.error,
-        info: console.info,
-        debug: console.debug
-      };
 
       console.log = function(...args) {
         originalConsole.log.apply(console, args);
@@ -116,34 +114,43 @@
         ).join(' '), 'info');
       };
 
-      console.debug = function(...args) {
-        originalConsole.debug.apply(console, args);
-        appendToConsole(args.map(arg => 
-          typeof arg === 'object' ? JSON.stringify(arg) : arg
-        ).join(' '), 'debug');
-      };
-
-      async function fetchOpenFoodFacts(productCode) {
-        console.debug('Fetching Open Food Facts data...');
-        const url = `https://world.openfoodfacts.org/api/v3/product/${productCode}.json`;
-        console.debug('Open Food Facts URL:', url);
+      function isValidBarcode(code) {
+        // Check if code exists and is a string or number
+        if (!code) return false;
         
-        try {
-          const response = await fetch(url);
-          if (!response.ok) {
-            throw new Error(`Open Food Facts API responded with status: ${response.status}`);
-          }
-          const data = await response.json();
-          console.debug('Open Food Facts response received:', data);
-          return data;
-        } catch (error) {
-          console.error('Open Food Facts API Error:', error);
-          throw error;
+        // Convert to string if it's a number
+        const codeString = code.toString();
+        
+        // Check if it's exactly 13 digits
+        if (!/^\d{13}$/.test(codeString)) return false;
+        
+        // Additional EAN-13 checksum validation could be added here
+        
+        return true;
+      }
+
+      async function startVideo() {
+        const media = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: 512,
+            height: 512,
+            deviceId,
+          },
+        });
+        video.srcObject = media;
+        console.info("Video stream started");
+      }
+
+      async function stopVideo() {
+        const media = video.srcObject;
+        if (media) {
+          media.getTracks().forEach((track) => track.stop());
+          console.info("Video stream stopped");
         }
       }
 
       async function fetchCoopData(productCode) {
-        console.debug('Fetching COOP data...');
+        console.log(`Fetching COOP data for product: ${productCode}`);
         const url = 'https://external.api.coop.se/personalization/search/entities/by-id';
         const params = {
           'api-version': 'v1',
@@ -152,8 +159,6 @@
 
         const queryString = new URLSearchParams(params).toString();
         const fullUrl = `${url}?${queryString}`;
-        console.debug('COOP API URL:', fullUrl);
-        console.debug('COOP API Request Body:', JSON.stringify([productCode]));
 
         try {
           const response = await fetch(fullUrl, {
@@ -170,7 +175,7 @@
           }
 
           const data = await response.json();
-          console.debug('COOP API response received:', data);
+          console.log('COOP API Response received');
           return data;
         } catch (error) {
           console.error('COOP API Error:', error);
@@ -179,36 +184,50 @@
       }
 
       async function processBarcode(productCode) {
-        if (isProcessing || productCode === lastScannedCode) {
-          console.debug('Skipping duplicate scan or processing in progress');
+        if (!isValidBarcode(productCode)) {
+          console.error(`Invalid barcode format: ${productCode}`);
           return;
         }
 
-        console.info(`Processing new barcode: ${productCode}`);
+        if (isProcessing || productCode === lastScannedCode) {
+          return;
+        }
+
+        console.log(`Processing barcode: ${productCode}`);
         isProcessing = true;
         lastScannedCode = productCode;
+        foodFactsDisplay.textContent = "Loading Open Food Facts data...";
+        coopDisplay.textContent = "Loading COOP data...";
 
         try {
-          // First try Open Food Facts
-          foodFactsDisplay.textContent = "Loading Open Food Facts data...";
-          const foodFactsResponse = await fetchOpenFoodFacts(productCode);
-          
+          console.log('Making API calls...');
+          const [foodFactsResponse, coopResponse] = await Promise.all([
+            $.getJSON(`https://world.openfoodfacts.org/api/v3/product/${productCode}.json`),
+            fetchCoopData(productCode)
+          ]);
+
+          console.log('Both API calls completed');
+
           const allergens = foodFactsResponse.product?.allergens_from_ingredients;
           if (allergens) {
             console.info(`Allergens found: ${allergens}`);
             alert(`Allergens: ${allergens}`);
+          } else {
+            console.info('No allergens information found');
           }
+
           foodFactsDisplay.textContent = "Open Food Facts Response:\n" + 
                                        JSON.stringify(foodFactsResponse, null, 2);
-
-          // Then try COOP
-          coopDisplay.textContent = "Loading COOP data...";
-          const coopResponse = await fetchCoopData(productCode);
           coopDisplay.textContent = "COOP Response:\n" + 
                                   JSON.stringify(coopResponse, null, 2);
 
         } catch (error) {
-          console.error("Error fetching data: " + error.message);
+          console.error("API Error:", error);
+          if (error.message.includes('COOP')) {
+            coopDisplay.textContent = "Error fetching COOP data: " + error.message;
+          } else {
+            foodFactsDisplay.textContent = "Error fetching Open Food Facts data: " + error.message;
+          }
         } finally {
           isProcessing = false;
           setTimeout(() => {
@@ -216,16 +235,6 @@
             console.log('Ready for next barcode scan');
           }, 5000);
         }
-      }
-
-      function isValidBarcode(code) {
-        if (!code) return false;
-        const codeString = code.toString();
-        if (!/^\d{13}$/.test(codeString)) {
-          console.debug(`Invalid barcode format: ${codeString}`);
-          return false;
-        }
-        return true;
       }
 
       async function read() {
@@ -250,50 +259,22 @@
         read_frame();
       }
 
-      async function startVideo() {
-        try {
-          const media = await navigator.mediaDevices.getUserMedia({
-            video: {
-              width: 512,
-              height: 512,
-              deviceId,
-            },
-          });
-          video.srcObject = media;
-          console.info("Video stream started");
-        } catch (error) {
-          console.error("Error starting video:", error);
-        }
-      }
-
-      async function stopVideo() {
-        const media = video.srcObject;
-        if (media) {
-          media.getTracks().forEach((track) => track.stop());
-          console.info("Video stream stopped");
-        }
-      }
-
       async function listDevices() {
-        try {
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          const select = document.querySelector("#device-list");
-          for (const device of devices) {
-            if (device.kind !== "videoinput") continue;
-            const option = document.createElement("option");
-            option.innerText = device.label || `Video device ${device.deviceId}`;
-            option.value = device.deviceId;
-            select.appendChild(option);
-          }
-          select.onchange = async (e) => {
-            deviceId = e.target.value;
-            await stopVideo();
-            await startVideo();
-          };
-          console.info(`Found ${devices.filter(d => d.kind === "videoinput").length} video devices`);
-        } catch (error) {
-          console.error("Error listing devices:", error);
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const select = document.querySelector("#device-list");
+        for (const device of devices) {
+          if (device.kind !== "videoinput") continue;
+          const option = document.createElement("option");
+          option.innerText = device.label || `Video device ${device.deviceId}`;
+          option.value = device.deviceId;
+          select.appendChild(option);
         }
+        select.onchange = async (e) => {
+          deviceId = e.target.value;
+          await stopVideo();
+          await startVideo();
+        };
+        console.info(`Found ${devices.filter(d => d.kind === "videoinput").length} video devices`);
       }
 
       async function main() {
@@ -311,8 +292,10 @@
         await listDevices();
       }
 
+      let somedata = await fetchCoopData(7311070006209);
+      console.log(JSON.stringify(coopResponse, null, 2));
+
       main();
-      
       window.onerror = (message) => {
         console.error("Global error:", message);
         alert(message);
