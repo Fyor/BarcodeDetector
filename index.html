@@ -21,6 +21,25 @@
         margin-top: 20px;
         background-color: #f5f5f5;
       }
+      #console-log {
+        width: 100%;
+        max-width: 100%;
+        min-height: 150px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-family: monospace;
+        white-space: pre-wrap;
+        margin-top: 20px;
+        background-color: #2b2b2b;
+        color: #fff;
+      }
+      .log-error {
+        color: #ff6b6b;
+      }
+      .log-info {
+        color: #69db7c;
+      }
     </style>
   </head>
   <body>
@@ -32,17 +51,83 @@
       </label>
     </p>
     <div class="response-container">
-      <div id="food-facts-response" class="json-response"></div>
-      <div id="coop-response" class="json-response"></div>
+      <div id="food-facts-response" class="json-response">Waiting for barcode scan...</div>
+      <div id="coop-response" class="json-response">Waiting for barcode scan...</div>
     </div>
+    <div id="console-log"></div>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
       const video = document.querySelector("video");
       const foodFactsDisplay = document.getElementById("food-facts-response");
       const coopDisplay = document.getElementById("coop-response");
+      const consoleDisplay = document.getElementById("console-log");
       let deviceId;
       let lastScannedCode = null;
       let isProcessing = false;
+
+      // Override console methods to display in our custom console
+      const originalConsole = {
+        log: console.log,
+        error: console.error,
+        info: console.info
+      };
+
+      function formatDate() {
+        return new Date().toLocaleTimeString();
+      }
+
+      function appendToConsole(message, type = 'log') {
+        const timestamp = formatDate();
+        let formattedMessage = `[${timestamp}] ${message}\n`;
+        
+        const div = document.createElement('div');
+        div.textContent = formattedMessage;
+        
+        if (type === 'error') {
+          div.className = 'log-error';
+        } else if (type === 'info') {
+          div.className = 'log-info';
+        }
+        
+        consoleDisplay.appendChild(div);
+        consoleDisplay.scrollTop = consoleDisplay.scrollHeight;
+      }
+
+      console.log = function(...args) {
+        originalConsole.log.apply(console, args);
+        appendToConsole(args.map(arg => 
+          typeof arg === 'object' ? JSON.stringify(arg) : arg
+        ).join(' '));
+      };
+
+      console.error = function(...args) {
+        originalConsole.error.apply(console, args);
+        appendToConsole(args.map(arg => 
+          typeof arg === 'object' ? JSON.stringify(arg) : arg
+        ).join(' '), 'error');
+      };
+
+      console.info = function(...args) {
+        originalConsole.info.apply(console, args);
+        appendToConsole(args.map(arg => 
+          typeof arg === 'object' ? JSON.stringify(arg) : arg
+        ).join(' '), 'info');
+      };
+
+      function isValidBarcode(code) {
+        // Check if code exists and is a string or number
+        if (!code) return false;
+        
+        // Convert to string if it's a number
+        const codeString = code.toString();
+        
+        // Check if it's exactly 13 digits
+        if (!/^\d{13}$/.test(codeString)) return false;
+        
+        // Additional EAN-13 checksum validation could be added here
+        
+        return true;
+      }
 
       async function startVideo() {
         const media = await navigator.mediaDevices.getUserMedia({
@@ -53,16 +138,19 @@
           },
         });
         video.srcObject = media;
+        console.info("Video stream started");
       }
 
       async function stopVideo() {
         const media = video.srcObject;
         if (media) {
           media.getTracks().forEach((track) => track.stop());
+          console.info("Video stream stopped");
         }
       }
 
       async function fetchCoopData(productCode) {
+        console.log(`Fetching COOP data for product: ${productCode}`);
         const url = 'https://external.api.coop.se/personalization/search/entities/by-id';
         const params = {
           'api-version': 'v1',
@@ -86,7 +174,9 @@
             throw new Error(`COOP API responded with status: ${response.status}`);
           }
 
-          return await response.json();
+          const data = await response.json();
+          console.log('COOP API Response received');
+          return data;
         } catch (error) {
           console.error('COOP API Error:', error);
           throw error;
@@ -94,31 +184,40 @@
       }
 
       async function processBarcode(productCode) {
+        if (!isValidBarcode(productCode)) {
+          console.error(`Invalid barcode format: ${productCode}`);
+          return;
+        }
+
         if (isProcessing || productCode === lastScannedCode) {
           return;
         }
 
+        console.log(`Processing barcode: ${productCode}`);
         isProcessing = true;
         lastScannedCode = productCode;
         foodFactsDisplay.textContent = "Loading Open Food Facts data...";
         coopDisplay.textContent = "Loading COOP data...";
 
         try {
-          // Make both API calls in parallel
+          console.log('Making API calls...');
           const [foodFactsResponse, coopResponse] = await Promise.all([
             $.getJSON(`https://world.openfoodfacts.org/api/v3/product/${productCode}.json`),
             fetchCoopData(productCode)
           ]);
 
-          // Process Open Food Facts response
+          console.log('Both API calls completed');
+
           const allergens = foodFactsResponse.product?.allergens_from_ingredients;
           if (allergens) {
+            console.info(`Allergens found: ${allergens}`);
             alert(`Allergens: ${allergens}`);
+          } else {
+            console.info('No allergens information found');
           }
+
           foodFactsDisplay.textContent = "Open Food Facts Response:\n" + 
                                        JSON.stringify(foodFactsResponse, null, 2);
-
-          // Process COOP response
           coopDisplay.textContent = "COOP Response:\n" + 
                                   JSON.stringify(coopResponse, null, 2);
 
@@ -131,9 +230,9 @@
           }
         } finally {
           isProcessing = false;
-          // Reset the last scanned code after 5 seconds
           setTimeout(() => {
             lastScannedCode = null;
+            console.log('Ready for next barcode scan');
           }, 5000);
         }
       }
@@ -148,11 +247,12 @@
             const results = await barcodeDetector.detect(video);
             if (results.length) {
               const productCode = results[0].rawValue;
-              processBarcode(productCode);
+              if (isValidBarcode(productCode)) {
+                processBarcode(productCode);
+              }
             }
           } catch (e) {
-            console.error(e);
-            foodFactsDisplay.textContent = "Error: " + e.message;
+            console.error("Barcode detection error:", e);
           }
           requestAnimationFrame(read_frame);
         }
@@ -174,20 +274,29 @@
           await stopVideo();
           await startVideo();
         };
+        console.info(`Found ${devices.filter(d => d.kind === "videoinput").length} video devices`);
       }
 
       async function main() {
+        console.info("Application starting...");
         await startVideo();
         if (window.BarcodeDetector) {
-          read().catch((e) => alert(e));
+          read().catch((e) => {
+            console.error("Error in main read loop:", e);
+            alert(e);
+          });
         } else {
+          console.error("BarcodeDetector not supported");
           alert("This browser does not support native barcode scanning");
         }
         await listDevices();
       }
 
       main();
-      window.onerror = (message) => alert(message);
+      window.onerror = (message) => {
+        console.error("Global error:", message);
+        alert(message);
+      };
     </script>
   </body>
 </html>
