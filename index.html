@@ -57,6 +57,9 @@
             if (results.length) {
               console.log(results);
               for (const r of results) {
+                if (r.rawValue == null || r.rawValue == "") {
+                  continue;
+                } 
                 const productCode = r.rawValue;
                 const url = `https://world.openfoodfacts.org/api/v3/product/${productCode}.json`;
                 $.getJSON(url, function(data) {
