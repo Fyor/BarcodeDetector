@@ -300,7 +300,9 @@
         const data = await response.json();
         console.log('GS1 Proxy Response received');
 
-        const productData = await $.getJSON(`https://productsearch.gs1.se/foodservice/tradeItem/${productCode}`);
+        let productID = data.id;
+
+        const productData = await $.getJSON(`https://productsearch.gs1.se/foodservice/tradeItem/${productID}`);
 
         if (!productData || !productData.ingredientStatement) {
           coopDisplay.textContent = "Product not found in GS1 database.";
