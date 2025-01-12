@@ -277,20 +277,24 @@
     }
 
     async function fetchGs1Data(productCode) {
-      try {
-        console.log(productCode);
+      if (!productCode) {
+        console.error("Product code is missing");
+        coopDisplay.textContent = "No product code provided.";
+        return;
+    }
 
+    try {
         coopDisplay.textContent = "Loading GS1 data...";
         const response = await fetch('/api/gs1-proxy', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ productCode }),
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ productCode }),
         });
 
         if (!response.ok) {
-          throw new Error(`Proxy server responded with status: ${response.status}`);
+            throw new Error(`Proxy server responded with status: ${response.status}`);
         }
 
         const idData = await response.json();
