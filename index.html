@@ -291,21 +291,27 @@
           throw new Error(`Proxy server responded with status: ${response.status}`);
         }
 
-        const data = await response.json();
+        const idData = await response.json();
         console.log('GS1 Proxy Response received');
+        let productCode = idData.results[0]?.id;
+        if (!isValidBarcode(productCode)){
+          return;
+        }
+        
+        const data = await $.getJSON(`https://productsearch.gs1.se/foodservice/tradeItem/${productCode}`);
 
-        if (!data || !data.results || data.results.length === 0) {
+        if (!data || !data.ingredientStatement) {
           coopDisplay.textContent = "Product not found in GS1 database.";
           console.info("No product data found in GS1 database");
           return;
         }
 
-        const productName = data.results[0].name || "Unknown Product";
+        const productName = data.descriptionShort || "Unknown Product";
         if (productTitle.textContent != "") {
           productTitle.textContent = productName;
         }
 
-        const allergens_gs1 = data.results[0].listOfIngredients || "No ingredients information found.";
+        const allergens_gs1 = data.ingredientStatement || "No ingredients information found.";
         coopDisplay.textContent = allergens_gs1;
 
         if (allergens_gs1) {
