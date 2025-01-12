@@ -65,7 +65,6 @@
       let lastScannedCode = null;
       let isProcessing = false;
 
-      // Override console methods to display in our custom console
       const originalConsole = {
         log: console.log,
         error: console.error,
@@ -115,17 +114,9 @@
       };
 
       function isValidBarcode(code) {
-        // Check if code exists and is a string or number
         if (!code) return false;
-        
-        // Convert to string if it's a number
         const codeString = code.toString();
-        
-        // Check if it's exactly 13 digits
         if (!/^\d{13}$/.test(codeString)) return false;
-        
-        // Additional EAN-13 checksum validation could be added here
-        
         return true;
       }
 
@@ -149,28 +140,65 @@
         }
       }
 
-      async function fetchCoopData(productCode) {
-      try {
-        const response = await fetch('/api/coop-proxy', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ productCode }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Proxy server responded with status: ${response.status}`);
+      async function fetchFoodFactsData(productCode) {
+        try {
+          foodFactsDisplay.textContent = "Loading Open Food Facts data...";
+          const response = await $.getJSON(`https://world.openfoodfacts.org/api/v3/product/${productCode}.json`);
+          console.log('Open Food Facts Response received');
+          if (!response || !response.product) {
+            foodFactsDisplay.textContent = "Product not found in Open Food Facts.";
+            console.info("No product data found in Open Food Facts");
+            return;
+          }
+          const allergens = response.product?.allergens_from_ingredients;
+          foodFactsDisplay.textContent = allergens || "No allergens information found.";
+          if (allergens) {
+            console.info(`Allergens found: ${allergens}`);
+            alert(`Allergens: ${allergens}`);
+          } else {
+            console.info('No allergens information found');
+          }
+        } catch (error) {
+          console.error("Open Food Facts Error:", error);
+          foodFactsDisplay.textContent = "Error fetching Open Food Facts data: " + error.message;
         }
-
-        const data = await response.json();
-        console.log('COOP Proxy Response received');
-        return data;
-      } catch (error) {
-        console.error('Proxy Error:', error);
-        throw error;
       }
-    }
+
+      async function fetchCoopData(productCode) {
+        try {
+          coopDisplay.textContent = "Loading COOP data...";
+          const response = await fetch('/api/coop-proxy', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ productCode }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Proxy server responded with status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          console.log('COOP Proxy Response received');
+          if (!data || !data.results || !data.results.items || data.results.items.length === 0) {
+            coopDisplay.textContent = "Product not found in COOP database.";
+            console.info("No product data found in COOP database");
+            return;
+          }
+          const allergens_coop = data.results?.items[0].listOfIngredients;
+          coopDisplay.textContent = allergens_coop || "No ingredients information found.";
+          if (allergens_coop) {
+            console.info(`Ingredients found: ${allergens_coop}`);
+            alert(`Ingredients: ${allergens_coop}`);
+          } else {
+            console.info('No ingredients information found');
+          }
+        } catch (error) {
+          console.error("COOP Proxy Error:", error);
+          coopDisplay.textContent = "Error fetching COOP data: " + error.message;
+        }
+      }
 
       async function processBarcode(productCode) {
         if (!isValidBarcode(productCode)) {
@@ -185,46 +213,14 @@
         console.log(`Processing barcode: ${productCode}`);
         isProcessing = true;
         lastScannedCode = productCode;
-        foodFactsDisplay.textContent = "Loading Open Food Facts data...";
-        coopDisplay.textContent = "Loading COOP data...";
 
         try {
-          console.log('Making API calls...');
-          const [foodFactsResponse, coopResponse] = await Promise.all([
-            $.getJSON(`https://world.openfoodfacts.org/api/v3/product/${productCode}.json`),
+          await Promise.all([
+            fetchFoodFactsData(productCode),
             fetchCoopData(productCode)
           ]);
-
-          console.log('Both API calls completed');
-
-          const allergens = foodFactsResponse.product?.allergens_from_ingredients;
-          if (allergens) {
-            console.info(`Allergens found: ${allergens}`);
-            alert(`Allergens: ${allergens}`);
-          } else {
-            console.info('No allergens information found');
-          }
-
-          const allergens_coop = coopResponse.results?.items[0].listOfIngredients;
-          if (allergens_coop) {
-            console.info(`allergens_coop found: ${allergens_coop}`);
-            alert(`Ingredients: ${allergens_coop}`);
-          } else {
-            console.info('No allergens_coop information found');
-          }
-
-          foodFactsDisplay.textContent = "Open Food Facts Response:\n" + 
-                                       JSON.stringify(foodFactsResponse, null, 2);
-          coopDisplay.textContent = "COOP Response:\n" + 
-                                  JSON.stringify(coopResponse, null, 2);
-
         } catch (error) {
-          console.error("API Error:", error);
-          if (error.message.includes('COOP')) {
-            coopDisplay.textContent = "Error fetching COOP data: " + error.message;
-          } else {
-            foodFactsDisplay.textContent = "Error fetching Open Food Facts data: " + error.message;
-          }
+          console.error("Processing error:", error);
         } finally {
           isProcessing = false;
           setTimeout(() => {
@@ -275,9 +271,6 @@
       }
 
       async function main() {
-        // let coopResponse = await fetchCoopData(7311070006209);
-        // console.log(JSON.stringify(coopResponse, null, 2));
-
         console.info("Application starting...");
         await startVideo();
         if (window.BarcodeDetector) {
@@ -291,8 +284,6 @@
         }
         await listDevices();
       }
-
-      
 
       main();
       window.onerror = (message) => {
