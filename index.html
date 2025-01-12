@@ -300,7 +300,7 @@
         const data = await response.json();
         console.log('GS1 Proxy Response received');
 
-        let productID = data.id;
+        let productID = data.results[0].id;
 
         const productData = await $.getJSON(`https://productsearch.gs1.se/foodservice/tradeItem/${productID}`);
 
