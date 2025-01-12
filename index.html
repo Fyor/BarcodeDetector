@@ -300,18 +300,20 @@
         const data = await response.json();
         console.log('GS1 Proxy Response received');
 
-        if (!data || !data.results || data.results.length === 0) {
-            coopDisplay.textContent = "Product not found in GS1 database.";
-            console.info("No product data found in GS1 database");
-            return;
+        const productData = await $.getJSON(`https://productsearch.gs1.se/foodservice/tradeItem/${productCode}`);
+
+        if (!productData || !productData.ingredientStatement) {
+          coopDisplay.textContent = "Product not found in GS1 database.";
+          console.info("No product data found in GS1 database");
+          return;
         }
 
-        const productName = data.results[0].name || "Unknown Product";
-        if (productTitle.textContent !== "") {
-            productTitle.textContent = productName;
+        const productName = productData.descriptionShort || "Unknown Product";
+        if (productTitle.textContent != "") {
+          productTitle.textContent = productName;
         }
 
-        const allergens_gs1 = data.results[0].listOfIngredients || "No ingredients information found.";
+        const allergens_gs1 = productData.ingredientStatement || "No ingredients information found.";
         coopDisplay.textContent = allergens_gs1;
 
         if (allergens_gs1) {
