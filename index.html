@@ -308,7 +308,6 @@
 
         const data = await response2.json();
         console.log('GS1 Proxy Response 2received' + JSON.stringify(data.ingredientStatement));
-        return data;
 
         if (!data || !data.ingredientStatement) {
           coopDisplay.textContent = "Product not found in GS1 database.";
