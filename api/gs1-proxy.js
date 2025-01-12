@@ -2,7 +2,6 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
         const productCode = req.body.productCode;
         const url = 'https://productsearch.gs1.se/foodservice/tradeItem/search';
-        console.log(productCode);
         try {
             const response = await fetch(url, {
                 method: 'POST',

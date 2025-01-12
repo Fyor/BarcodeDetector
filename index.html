@@ -278,6 +278,8 @@
 
     async function fetchGs1Data(productCode) {
       try {
+        console.log(productCode);
+
         coopDisplay.textContent = "Loading GS1 data...";
         const response = await fetch('/api/gs1-proxy', {
           method: 'POST',
