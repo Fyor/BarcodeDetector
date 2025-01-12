@@ -20,6 +20,8 @@ export default async function handler(req, res) {
             const data = await response.json();
 
             let productID = data.results[0].id;
+            
+            console.log("Got the id!" + productID);
 
             const response2 = await fetch(`https://productsearch.gs1.se/foodservice/tradeItem/${productID}`);
             if (!response2.ok) {
@@ -28,7 +30,7 @@ export default async function handler(req, res) {
 
             const data = await response2.json();
             console.log(productResponse);
-            
+
             return res.status(200).json(data);
         } catch (error) {
             return res.status(500).json({ error: error.message });
