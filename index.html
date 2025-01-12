@@ -277,54 +277,55 @@
     }
 
     async function fetchGs1Data(productCode) {
-      if (!productCode) {
-          console.error("Product code is missing");
-          coopDisplay.textContent = "No product code provided.";
-          return;
-      }
-
       try {
-          coopDisplay.textContent = "Loading GS1 data...";
-          const response = await fetch('/api/gs1-proxy', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ productCode }),
-          });
+        console.log(productCode);
 
-          if (!response.ok) {
-              throw new Error(`Proxy server responded with status: ${response.status}`);
-          }
+        coopDisplay.textContent = "Loading GS1 data...";
+        const response = await fetch('/api/gs1-proxy', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ productCode }),
+        });
 
-          const data = await response.json();
-          console.log('GS1 Proxy Response received');
-
-          if (!data || !data.results || data.results.length === 0) {
-              coopDisplay.textContent = "Product not found in GS1 database.";
-              console.info("No product data found in GS1 database");
-              return;
-          }
-
-          const productName = data.results[0].name || "Unknown Product";
-          if (productTitle.textContent !== "") {
-              productTitle.textContent = productName;
-          }
-
-          const allergens_gs1 = data.results[0].listOfIngredients || "No ingredients information found.";
-          coopDisplay.textContent = allergens_gs1;
-
-          if (allergens_gs1) {
-              console.info(`Ingredients found: ${allergens_gs1}`);
-          } else {
-              console.info('No ingredients information found');
-          }
-        } catch (error) {
-            console.error("GS1 Proxy Error:", error);
-            coopDisplay.textContent = "Error fetching GS1 data: " + error.message;
+        if (!response.ok) {
+          throw new Error(`Proxy server responded with status: ${response.status}`);
         }
-    }
 
+        const idData = await response.json();
+        console.log('GS1 Proxy Response received');
+        let productCode = idData.results[0]?.id;
+        if (!isValidBarcode(productCode)){
+          return;
+        }
+        
+        const data = await $.getJSON(`https://productsearch.gs1.se/foodservice/tradeItem/${productCode}`);
+
+        if (!data || !data.ingredientStatement) {
+          coopDisplay.textContent = "Product not found in GS1 database.";
+          console.info("No product data found in GS1 database");
+          return;
+        }
+
+        const productName = data.descriptionShort || "Unknown Product";
+        if (productTitle.textContent != "") {
+          productTitle.textContent = productName;
+        }
+
+        const allergens_gs1 = data.ingredientStatement || "No ingredients information found.";
+        coopDisplay.textContent = allergens_gs1;
+
+        if (allergens_gs1) {
+          console.info(`Ingredients found: ${allergens_gs1}`);
+        } else {
+          console.info('No ingredients information found');
+        }
+      } catch (error) {
+        console.error("GS1 Proxy Error:", error);
+        coopDisplay.textContent = "Error fetching GS1 data: " + error.message;
+      }
+    }
 
 
     async function processBarcode(productCode) {
@@ -401,7 +402,7 @@
     }
 
     async function main() {
-      const ress = await fetchGs1Data("07318690110095");
+      let ress = await fetchGs1Data("07318690110095");
       console.log(ress.json())
       
       console.info("Application starting...");
