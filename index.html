@@ -3,6 +3,44 @@
     <meta charset="utf-8" />
     <title>Native QR Code reader demo</title>
     <style>
+      .container {
+        display: flex;
+        flex-direction: row;
+        gap: 20px;
+        width: 100%;
+      }
+      .video-container {
+        flex: 1;
+        max-width: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      video {
+        width: 100%;
+        max-width: 100%;
+        border: 1px solid #ccc;
+      }
+      .showcase {
+        flex: 1;
+        max-width: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 10px;
+        background-color: #f9f9f9;
+        text-align: center;
+      }
+      .showcase img {
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-top: 10px;
+      }
       .response-container {
         display: flex;
         gap: 20px;
@@ -43,7 +81,15 @@
     </style>
   </head>
   <body>
-    <video autoplay></video>
+    <div class="container">
+      <div class="video-container">
+        <video autoplay></video>
+      </div>
+      <div class="showcase">
+        <h3 id="product-title">No product scanned yet</h3>
+        <img id="product-image" src="https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png?v=1530129081" alt="Product placeholder" />
+      </div>
+    </div>
     <p>
       <label
         >camera:
@@ -61,6 +107,10 @@
       const foodFactsDisplay = document.getElementById("food-facts-response");
       const coopDisplay = document.getElementById("coop-response");
       const consoleDisplay = document.getElementById("console-log");
+      const productTitle = document.getElementById("product-title");
+      const productImage = document.getElementById("product-image");
+      const placeholderImage = "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png?v=1530129081";
+
       let deviceId;
       let lastScannedCode = null;
       let isProcessing = false;
@@ -147,8 +197,18 @@
           console.log('Open Food Facts Response received');
           if (!response || !response.product) {
             foodFactsDisplay.textContent = "Product not found in Open Food Facts.";
+            productTitle.textContent = "Product not found";
+            productImage.src = placeholderImage;
             console.info("No product data found in Open Food Facts");
             return;
+          }
+          const productName = response.product?.product_name;
+          const productImageUrl = response.product?.image_url;
+          if (response.product?.image_url != "") {
+            productImage.src = productImageUrl;
+          }
+          if (productTitle.textContent != ""){
+            productTitle.textContent = productName;
           }
           const allergens = response.product?.allergens_from_ingredients;
           foodFactsDisplay.textContent = allergens || "No allergens information found.";
@@ -185,6 +245,12 @@
             console.info("No product data found in COOP database");
             return;
           }
+
+          const productName = data.results?.items[0].name;
+          if (productTitle.textContent != ""){
+            productTitle.textContent = productName;
+          }
+
           const allergens_coop = data.results?.items[0].listOfIngredients;
           coopDisplay.textContent = allergens_coop || "No ingredients information found.";
           if (allergens_coop) {
@@ -213,6 +279,9 @@
         lastScannedCode = productCode;
 
         try {
+          productTitle.textContent = "No product scanned yet";
+          productImage.src = placeholderImage;
+
           await Promise.all([
             fetchFoodFactsData(productCode),
             fetchCoopData(productCode)
