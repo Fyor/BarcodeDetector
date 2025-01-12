@@ -21,8 +21,8 @@ export default async function handler(req, res) {
 
             let productID = data.results[0].id;
 
-            const productResponse = $.getJSON(`https://productsearch.gs1.se/foodservice/tradeItem/${productID}`);
-
+            const productResponse = await $.getJSON(`https://productsearch.gs1.se/foodservice/tradeItem/${productID}`);
+            console.log(productCode);
             return productResponse;
         } catch (error) {
             return res.status(500).json({ error: error.message });
