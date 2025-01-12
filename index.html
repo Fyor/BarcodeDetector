@@ -307,7 +307,7 @@
         }
 
         const data = await response2.json();
-        console.log('GS1 Proxy Response 2received' + JSON.stringify(data));
+        console.log('GS1 Proxy Response 2received' + JSON.stringify(data.ingredientStatement));
         return data;
 
         if (!data || !data.ingredientStatement) {
