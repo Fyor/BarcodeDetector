@@ -344,7 +344,7 @@
           productTitle.textContent = productName;
         }
 
-        if (is_allergic(allergens)) {
+        if (is_allergic(data.ingredientStatement)) {
           alert("ALLERGEN FOUND: SHE CANNOT EAT IT");
         }
 
@@ -361,7 +361,7 @@
 
     } catch (error) {
         console.error("GS1 Proxy Error:", error);
-        // coopDisplay.textContent = "Error fetching GS1 data: " + error.message;
+        coopDisplay.textContent = "Error fetching GS1 data: " + error.message;
     }
 }
 
