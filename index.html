@@ -352,7 +352,7 @@
 }
 
     const fetchImage = async (imageCode) => {
-      const response = await fetch(`/api/fetch-image?imageCode=${imageCode}`);
+      const response = await fetch(`/api/gs1-proxy-image?imageCode=${imageCode}`);
       
       if (response.ok) {
         const blob = await response.blob();
