@@ -342,11 +342,28 @@
         } else {
             console.info('No ingredients information found');
         }
+
+        fetchImage(data.image);
+
     } catch (error) {
         console.error("GS1 Proxy Error:", error);
         coopDisplay.textContent = "Error fetching GS1 data: " + error.message;
     }
 }
+
+    const fetchImage = async (imageCode) => {
+      const response = await fetch(`https://yourdomain.com/api/fetch-image?imageCode=${imageCode}`);
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const imageUrl = URL.createObjectURL(blob);
+
+        productImage.src = imageUrl;
+        document.body.appendChild(img); // Appends the image to the body
+      } else {
+        console.error(`Error: ${response.statusText}`);
+      }
+    };
 
     async function processBarcode(productCode) {
       if (!isValidBarcode(productCode)) {
