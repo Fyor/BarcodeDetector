@@ -215,7 +215,7 @@
       }
     }
 
-    const allergies = ["vete", "vetemjöl", "flour", "wheat", "nuts", "nöter"]
+    const allergies = ["vete", "vetemjöl", "flour", "wheat", "nuts", "nöter", "ägg", "egg"]
 
     function is_allergic(inputString) {
       const lowerCaseInput = inputString.toLowerCase();
@@ -453,7 +453,7 @@
     }
 
     async function main() {
-      let ress = await fetchGs1Data("5703828003288");
+      // let ress = await fetchGs1Data("5703828003288");
       
       console.info("Application starting...");
       await startVideo();
