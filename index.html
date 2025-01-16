@@ -359,7 +359,6 @@
         const imageUrl = URL.createObjectURL(blob);
 
         productImage.src = imageUrl;
-        document.body.appendChild(img); // Appends the image to the body
       } else {
         console.error(`Error: ${response.statusText}`);
       }
