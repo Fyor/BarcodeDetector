@@ -215,6 +215,13 @@
       }
     }
 
+    const allergies = ["vete", "vetemjöl", "flour", "wheat", "nuts", "nöter"]
+
+    function is_allergic(inputString) {
+      const lowerCaseInput = inputString.toLowerCase();
+      return allergies.some(substring => lowerCaseInput.includes(substring.toLowerCase()));
+    }
+
     async function fetchFoodFactsData(productCode) {
       try {
         foodFactsDisplay.textContent = "Loading Open Food Facts data...";
@@ -237,6 +244,9 @@
           productTitle.textContent = productName;
         }
         const allergens = response.product?.allergens_from_ingredients;
+        if (is_allergic(allergens)) {
+          alert("ALLERGEN FOUND: SHE CANNOT EAT IT");
+        }
         foodFactsDisplay.textContent = allergens || "No allergens information found.";
         if (allergens) {
           console.info(`Allergens found: ${allergens}`);
@@ -332,6 +342,10 @@
         const productName = data.descriptionShort || "Unknown Product";
         if (productTitle.textContent != "") {
           productTitle.textContent = productName;
+        }
+
+        if (is_allergic(allergens)) {
+          alert("ALLERGEN FOUND: SHE CANNOT EAT IT");
         }
 
         const allergens_gs1 = data.ingredientStatement || "No ingredients information found.";
