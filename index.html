@@ -368,7 +368,7 @@
 
         await Promise.all([
           fetchFoodFactsData(productCode),
-          fetchCoopData(productCode),
+          //fetchCoopData(productCode),
           fetchGs1Data(productCode)
         ]);
       } catch (error) {
@@ -423,7 +423,7 @@
     }
 
     async function main() {
-      // let ress = await fetchFoodFactsData("07318690110095");
+      let ress = await fetchGs1Data("07318690110095");
       
       console.info("Application starting...");
       await startVideo();
